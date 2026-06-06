@@ -1,6 +1,7 @@
 import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
+  DEATH_FADE_DURATION,
   PATH_WAYPOINTS,
   TOWER_RADIUS,
   TOWER_TYPES,
@@ -14,12 +15,13 @@ export function renderGame(
   ctx: CanvasRenderingContext2D,
   state: RuntimeGameState,
   drag: DragState | null,
+  hoveredEnemyId: number | null,
 ): void {
   drawBackground(ctx);
   drawPath(ctx);
   drawEntranceExit(ctx);
   drawTowers(ctx, state);
-  drawEnemies(ctx, state);
+  drawEnemies(ctx, state, hoveredEnemyId);
   drawProjectiles(ctx, state);
   drawFloatingTexts(ctx, state);
   drawSelectedTower(ctx, state);
@@ -191,15 +193,21 @@ function drawTowerIcon(
   }
 }
 
-function drawEnemies(ctx: CanvasRenderingContext2D, state: RuntimeGameState): void {
+function drawEnemies(
+  ctx: CanvasRenderingContext2D,
+  state: RuntimeGameState,
+  hoveredEnemyId: number | null,
+): void {
   for (const enemy of state.enemies) {
-    if (!enemy.alive && enemy.hitFlash <= 0) continue;
+    const isDying = !enemy.alive && enemy.deathFade > 0;
+    if (!enemy.alive && !isDying) continue;
 
     const pos = getEnemyPosition(enemy);
-    const alpha = enemy.alive ? 1 : enemy.hitFlash * 3;
+    const fadeAlpha = isDying ? enemy.deathFade / DEATH_FADE_DURATION : 1;
+    const scale = isDying ? 0.6 + fadeAlpha * 0.4 : 1;
 
     ctx.save();
-    ctx.globalAlpha = alpha;
+    ctx.globalAlpha = fadeAlpha;
 
     if (enemy.hitFlash > 0 && enemy.alive) {
       ctx.shadowColor = '#fff';
@@ -208,11 +216,13 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: RuntimeGameState): vo
 
     ctx.fillStyle = enemy.color;
     ctx.beginPath();
-    if (enemy.isBoss) {
+    const drawRadius = enemy.radius * scale;
+
+    if (enemy.isBoss && enemy.alive) {
       ctx.save();
       ctx.shadowColor = 'rgba(142,68,173,0.6)';
       ctx.shadowBlur = 16;
-      ctx.arc(pos.x, pos.y, enemy.radius, 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y, drawRadius, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
@@ -223,23 +233,23 @@ function drawEnemies(ctx: CanvasRenderingContext2D, state: RuntimeGameState): vo
       ctx.fillStyle = '#fff';
       ctx.font = 'bold 11px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('BOSS', pos.x, pos.y - enemy.radius - 18);
+      ctx.fillText('BOSS', pos.x, pos.y - drawRadius - 18);
     } else {
-      ctx.arc(pos.x, pos.y, enemy.radius, 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y, drawRadius, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = enemy.accentColor;
       ctx.lineWidth = 2;
       ctx.stroke();
     }
 
-    if (enemy.alive) {
+    if (enemy.alive && enemy.id === hoveredEnemyId) {
       drawHealthBar(
         ctx,
         pos.x,
         pos.y - enemy.radius - 10,
         enemy.hp,
         enemy.maxHp,
-        enemy.isBoss ? 48 : 28,
+        enemy.isBoss ? 56 : 36,
         enemy.isBoss,
       );
     }
@@ -259,6 +269,13 @@ function drawHealthBar(
 ): void {
   const ratio = Math.max(0, hp / maxHp);
   const height = isBoss ? 8 : 5;
+  const displayHp = Math.max(0, Math.ceil(hp));
+  const label = `${displayHp}/${maxHp} HP`;
+
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.font = 'bold 10px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, x, y - 4);
 
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(x - width / 2, y, width, height);

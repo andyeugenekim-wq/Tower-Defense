@@ -1,20 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { GameCanvas } from './game/GameCanvas';
-import type { GameSnapshot, ScreenState, UpgradeInfo } from './game/gameTypes';
+import type { GameSnapshot, ScreenState } from './game/gameTypes';
 import { TOWER_SHOP_ORDER, TOWER_TYPES, TOTAL_WAVES } from './game/constants';
 import { resumeAudio } from './game/audio';
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenState>('home');
+  const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
+  const [autoStartWaves, setAutoStartWaves] = useState(false);
+  const [resetPreserveAutoStart, setResetPreserveAutoStart] = useState(false);
   const [snapshot, setSnapshot] = useState<GameSnapshot>({
     money: 500,
     health: 100,
     currentWave: 1,
-    enemiesRemaining: 0,
     waveStatus: 'waiting',
     waveMessage: 'Place towers, then start the wave',
     paused: false,
     gameSpeed: 1,
+    autoStartWaves: false,
     selectedTowerInfo: null,
     notifications: [],
   });
@@ -31,35 +34,77 @@ export default function App() {
 
   const handleGameOver = useCallback((result: 'victory' | 'defeat') => {
     setScreen(result);
+    setPauseMenuOpen(false);
     setDragTypeId(null);
     setSelectedTowerId(null);
+    setSnapshot((s) => ({ ...s, paused: false }));
   }, []);
+
+  const triggerReset = (preserveAutoStart: boolean) => {
+    setResetPreserveAutoStart(preserveAutoStart);
+    setResetRequest((r) => r + 1);
+  };
 
   const handleStartGame = () => {
     resumeAudio();
+    setAutoStartWaves(false);
     setScreen('playing');
-    setResetRequest((r) => r + 1);
+    setPauseMenuOpen(false);
+    triggerReset(false);
     setStartWaveRequest(0);
     setSelectedTowerId(null);
     setDragTypeId(null);
+    setSnapshot((s) => ({
+      ...s,
+      paused: false,
+      autoStartWaves: false,
+    }));
   };
 
   const handleRestart = () => {
     setScreen('playing');
-    setResetRequest((r) => r + 1);
+    setPauseMenuOpen(false);
+    triggerReset(true);
     setStartWaveRequest(0);
     setSelectedTowerId(null);
     setDragTypeId(null);
+    setSnapshot((s) => ({ ...s, paused: false }));
+  };
+
+  const handleGoHome = () => {
+    setScreen('home');
+    setPauseMenuOpen(false);
+    setAutoStartWaves(false);
+    triggerReset(false);
+    setStartWaveRequest(0);
+    setSelectedTowerId(null);
+    setDragTypeId(null);
+    setSnapshot((s) => ({
+      ...s,
+      paused: false,
+      autoStartWaves: false,
+    }));
+  };
+
+  const openPauseMenu = () => {
+    setPauseMenuOpen(true);
+    setSnapshot((s) => ({ ...s, paused: true }));
+  };
+
+  const resumeFromPause = () => {
+    setPauseMenuOpen(false);
+    setSnapshot((s) => ({ ...s, paused: false }));
+  };
+
+  const handleRestartFromPause = () => {
+    setPauseMenuOpen(false);
+    handleRestart();
   };
 
   const handleStartWave = () => {
     if (snapshot.waveStatus === 'waiting' || snapshot.waveStatus === 'between') {
       setStartWaveRequest((r) => r + 1);
     }
-  };
-
-  const togglePause = () => {
-    setSnapshot((s) => ({ ...s, paused: !s.paused }));
   };
 
   const toggleSpeed = () => {
@@ -69,13 +114,26 @@ export default function App() {
     }));
   };
 
+  const toggleAutoStartWaves = () => {
+    setAutoStartWaves((value) => !value);
+  };
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setSelectedTowerId(null);
+      if (screen !== 'playing') return;
+      if (e.key === 'Escape') {
+        if (pauseMenuOpen) {
+          resumeFromPause();
+        } else if (selectedTowerId !== null) {
+          setSelectedTowerId(null);
+        } else {
+          openPauseMenu();
+        }
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [screen, pauseMenuOpen, selectedTowerId]);
 
   const waveButtonLabel = useMemo(() => {
     if (snapshot.waveStatus === 'spawning' || snapshot.waveStatus === 'active') {
@@ -114,9 +172,14 @@ export default function App() {
         <div className="overlay-card">
           <h2>Defeat</h2>
           <p>Your base has been overrun. Regroup and try again.</p>
-          <button type="button" className="btn btn-primary btn-large" onClick={handleRestart}>
-            Restart
-          </button>
+          <div className="overlay-actions">
+            <button type="button" className="btn btn-primary btn-large" onClick={handleRestart}>
+              Restart
+            </button>
+            <button type="button" className="btn btn-secondary btn-large" onClick={handleGoHome}>
+              Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -128,9 +191,14 @@ export default function App() {
         <div className="overlay-card">
           <h2>Victory</h2>
           <p>You defended all five waves and defeated the Final Boss!</p>
-          <button type="button" className="btn btn-primary btn-large" onClick={handleRestart}>
-            Play Again
-          </button>
+          <div className="overlay-actions">
+            <button type="button" className="btn btn-primary btn-large" onClick={handleRestart}>
+              Play Again
+            </button>
+            <button type="button" className="btn btn-secondary btn-large" onClick={handleGoHome}>
+              Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -155,13 +223,9 @@ export default function App() {
             {snapshot.currentWave} / {TOTAL_WAVES}
           </span>
         </div>
-        <div className="hud-stat">
-          <span className="hud-label">Enemies</span>
-          <span className="hud-value">{snapshot.enemiesRemaining}</span>
-        </div>
         <div className="hud-actions">
-          <button type="button" className="btn btn-secondary btn-small" onClick={togglePause}>
-            {snapshot.paused ? 'Resume' : 'Pause'}
+          <button type="button" className="btn btn-secondary btn-small" onClick={openPauseMenu}>
+            Pause
           </button>
           <button type="button" className="btn btn-secondary btn-small" onClick={toggleSpeed}>
             {snapshot.gameSpeed}x Speed
@@ -170,9 +234,11 @@ export default function App() {
             type="button"
             className="btn btn-accent btn-small"
             onClick={handleStartWave}
-            disabled={!canStartWave}
+            disabled={!canStartWave || (autoStartWaves && snapshot.waveStatus === 'between')}
           >
-            {waveButtonLabel}
+            {autoStartWaves && snapshot.waveStatus === 'between'
+              ? 'Auto-Starting...'
+              : waveButtonLabel}
           </button>
         </div>
       </header>
@@ -191,7 +257,7 @@ export default function App() {
                 key={typeId}
                 className={`tower-card ${affordable ? '' : 'disabled'}`}
                 onPointerDown={(e) => {
-                  if (!affordable) return;
+                  if (!affordable || pauseMenuOpen) return;
                   e.preventDefault();
                   setDragTypeId(typeId);
                 }}
@@ -224,14 +290,16 @@ export default function App() {
             onDragEnd={() => setDragTypeId(null)}
             startWaveRequest={startWaveRequest}
             resetRequest={resetRequest}
+            resetPreserveAutoStart={resetPreserveAutoStart}
             upgradeRequest={upgradeRequest}
             sellRequest={sellRequest}
             paused={snapshot.paused}
             gameSpeed={snapshot.gameSpeed}
+            autoStartWaves={autoStartWaves}
           />
         </div>
 
-        {snapshot.selectedTowerInfo && selectedTowerId !== null && (
+        {snapshot.selectedTowerInfo && selectedTowerId !== null && !pauseMenuOpen && (
           <UpgradePanel
             info={snapshot.selectedTowerInfo}
             money={snapshot.money}
@@ -245,7 +313,63 @@ export default function App() {
         )}
       </div>
 
+      {pauseMenuOpen && (
+        <PauseMenu
+          autoStartWaves={autoStartWaves}
+          onResume={resumeFromPause}
+          onRestart={handleRestartFromPause}
+          onHome={handleGoHome}
+          onToggleAutoStart={toggleAutoStartWaves}
+        />
+      )}
+
       <NotificationList notifications={snapshot.notifications} />
+    </div>
+  );
+}
+
+function PauseMenu({
+  autoStartWaves,
+  onResume,
+  onRestart,
+  onHome,
+  onToggleAutoStart,
+}: {
+  autoStartWaves: boolean;
+  onResume: () => void;
+  onRestart: () => void;
+  onHome: () => void;
+  onToggleAutoStart: () => void;
+}) {
+  return (
+    <div className="pause-overlay">
+      <div className="pause-menu">
+        <h2>Paused</h2>
+        <label className="pause-toggle">
+          <input
+            type="checkbox"
+            checked={autoStartWaves}
+            onChange={onToggleAutoStart}
+          />
+          <span>Auto-Start Waves</span>
+        </label>
+        <p className="pause-hint">
+          {autoStartWaves
+            ? 'Next waves begin automatically after each wave ends.'
+            : 'Waves must be started manually from the HUD.'}
+        </p>
+        <div className="pause-actions">
+          <button type="button" className="btn btn-primary" onClick={onResume}>
+            Resume
+          </button>
+          <button type="button" className="btn btn-secondary" onClick={onRestart}>
+            Restart
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={onHome}>
+            Home
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -257,7 +381,7 @@ function UpgradePanel({
   onUpgrade,
   onSell,
 }: {
-  info: UpgradeInfo;
+  info: NonNullable<GameSnapshot['selectedTowerInfo']>;
   money: number;
   onClose: () => void;
   onUpgrade: () => void;

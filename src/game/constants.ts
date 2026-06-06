@@ -13,6 +13,7 @@ export const TOWER_PADDING = 8;
 
 export const SPAWN_INTERVAL = 0.8;
 export const PROJECTILE_HIT_RADIUS = 10;
+export const DEATH_FADE_DURATION = 0.4;
 
 export const PATH_WAYPOINTS: Point[] = [
   { x: 0, y: 300 },

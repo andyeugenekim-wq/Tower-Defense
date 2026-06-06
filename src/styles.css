@@ -106,6 +106,16 @@ body {
   margin-bottom: 24px;
 }
 
+.overlay-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.overlay-actions .btn {
+  width: 100%;
+}
+
 .victory-screen .overlay-card h2 {
   color: #4ade80;
 }
@@ -403,6 +413,64 @@ body {
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+.pause-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.pause-menu {
+  width: min(360px, calc(100vw - 32px));
+  padding: 28px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.pause-menu h2 {
+  margin-bottom: 18px;
+  font-size: 1.8rem;
+}
+
+.pause-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.pause-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+.pause-hint {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.pause-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.pause-actions .btn {
+  width: 100%;
 }
 
 @media (max-width: 1100px) {

@@ -8,7 +8,6 @@ import {
 } from './projectile';
 import {
   checkDefeat,
-  getEnemiesRemaining,
   updateWaveManager,
   updateWaveMessage,
 } from './waveManager';
@@ -42,11 +41,11 @@ export function getSnapshot(
     money: state.money,
     health: state.health,
     currentWave: state.currentWave,
-    enemiesRemaining: getEnemiesRemaining(state),
     waveStatus: state.waveStatus,
     waveMessage: state.waveMessage,
     paused: state.paused,
     gameSpeed: state.gameSpeed,
+    autoStartWaves: state.autoStartWaves,
     selectedTowerInfo: selectedTower ? getUpgradeInfo(selectedTower) : null,
     notifications: [...state.notifications],
   };

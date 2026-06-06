@@ -32,6 +32,7 @@ export interface Enemy {
   alive: boolean;
   escaped: boolean;
   hitFlash: number;
+  deathFade: number;
 }
 
 export interface TowerType {
@@ -117,11 +118,11 @@ export interface GameSnapshot {
   money: number;
   health: number;
   currentWave: number;
-  enemiesRemaining: number;
   waveStatus: WaveStatus;
   waveMessage: string;
   paused: boolean;
   gameSpeed: number;
+  autoStartWaves: boolean;
   selectedTowerInfo: UpgradeInfo | null;
   notifications: Notification[];
 }
@@ -172,4 +173,5 @@ export interface RuntimeGameState {
   waveActive: boolean;
   waveCompletePending: boolean;
   bossWarningShown: boolean;
+  autoStartWaves: boolean;
 }

@@ -33,12 +33,15 @@ export function createInitialState(): RuntimeGameState {
     waveActive: false,
     waveCompletePending: false,
     bossWarningShown: false,
+    autoStartWaves: false,
   };
 }
 
-export function resetGameState(state: RuntimeGameState): void {
+export function resetGameState(state: RuntimeGameState, preserveAutoStart = false): void {
+  const autoStartWaves = preserveAutoStart ? state.autoStartWaves : false;
   const fresh = createInitialState();
   Object.assign(state, fresh);
+  state.autoStartWaves = autoStartWaves;
 }
 
 export function buildSpawnQueue(waveNumber: number): string[] {
@@ -140,7 +143,12 @@ export function updateWaveMessage(state: RuntimeGameState, dt: number): void {
     state.waveMessageTimer -= dt;
     if (state.waveMessageTimer <= 0 && state.waveStatus === 'between') {
       state.waveStatus = 'waiting';
-      state.waveMessage = 'Place towers, then start the next wave';
+      state.waveMessage = state.autoStartWaves
+        ? 'Starting next wave...'
+        : 'Place towers, then start the next wave';
+      if (state.autoStartWaves) {
+        startWave(state);
+      }
     }
   }
 }

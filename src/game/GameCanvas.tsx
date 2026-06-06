@@ -5,9 +5,9 @@ import { canvasToPoint } from './geometry';
 import { updateGame, getSnapshot } from './gameLoop';
 import { renderGame } from './renderer';
 import { createInitialState, resetGameState, startWave } from './waveManager';
+import { getEnemyAtPoint } from './enemy';
 import {
   getTowerAtPoint,
-  getUpgradeInfo,
   placeTower,
   sellTower,
   upgradeTower,
@@ -23,10 +23,12 @@ interface GameCanvasProps {
   onDragEnd: () => void;
   startWaveRequest: number;
   resetRequest: number;
+  resetPreserveAutoStart: boolean;
   upgradeRequest: number;
   sellRequest: number;
   paused: boolean;
   gameSpeed: number;
+  autoStartWaves: boolean;
 }
 
 export function GameCanvas({
@@ -39,14 +41,17 @@ export function GameCanvas({
   onDragEnd,
   startWaveRequest,
   resetRequest,
+  resetPreserveAutoStart,
   upgradeRequest,
   sellRequest,
   paused,
   gameSpeed,
+  autoStartWaves,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef(createInitialState());
   const dragRef = useRef<DragState>({ typeId: null, x: 0, y: 0, active: false });
+  const hoveredEnemyIdRef = useRef<number | null>(null);
   const lastTimeRef = useRef(0);
   const frameRef = useRef(0);
   const snapshotTimerRef = useRef(0);
@@ -65,6 +70,10 @@ export function GameCanvas({
   }, [gameSpeed]);
 
   useEffect(() => {
+    stateRef.current.autoStartWaves = autoStartWaves;
+  }, [autoStartWaves]);
+
+  useEffect(() => {
     stateRef.current.selectedTowerId = selectedTowerId;
   }, [selectedTowerId]);
 
@@ -78,11 +87,12 @@ export function GameCanvas({
   useEffect(() => {
     if (resetRequest !== prevResetRef.current) {
       prevResetRef.current = resetRequest;
-      resetGameState(stateRef.current);
+      resetGameState(stateRef.current, resetPreserveAutoStart);
       dragRef.current = { typeId: null, x: 0, y: 0, active: false };
+      hoveredEnemyIdRef.current = null;
       onSelectTower(null);
     }
-  }, [resetRequest, onSelectTower]);
+  }, [resetRequest, resetPreserveAutoStart, onSelectTower]);
 
   useEffect(() => {
     if (upgradeRequest !== prevUpgradeRef.current && selectedTowerId !== null) {
@@ -113,13 +123,39 @@ export function GameCanvas({
     }
   }, [dragTypeId]);
 
-  const handlePointerMove = useCallback((clientX: number, clientY: number) => {
+  const updateHover = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
-    if (!canvas || !dragRef.current.active) return;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const insideCanvas =
+      clientX >= rect.left &&
+      clientX <= rect.right &&
+      clientY >= rect.top &&
+      clientY <= rect.bottom;
+
+    if (!insideCanvas) {
+      hoveredEnemyIdRef.current = null;
+      return;
+    }
+
     const point = canvasToPoint(clientX, clientY, canvas);
-    dragRef.current.x = point.x;
-    dragRef.current.y = point.y;
+    const enemy = getEnemyAtPoint(stateRef.current, point);
+    hoveredEnemyIdRef.current = enemy?.id ?? null;
   }, []);
+
+  const handlePointerMove = useCallback(
+    (clientX: number, clientY: number) => {
+      updateHover(clientX, clientY);
+
+      const canvas = canvasRef.current;
+      if (!canvas || !dragRef.current.active) return;
+      const point = canvasToPoint(clientX, clientY, canvas);
+      dragRef.current.x = point.x;
+      dragRef.current.y = point.y;
+    },
+    [updateHover],
+  );
 
   const handlePointerUp = useCallback(
     (clientX: number, clientY: number) => {
@@ -201,6 +237,7 @@ export function GameCanvas({
         ctx,
         stateRef.current,
         dragRef.current.active ? dragRef.current : null,
+        hoveredEnemyIdRef.current,
       );
 
       snapshotTimerRef.current += rawDt;

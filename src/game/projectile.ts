@@ -2,6 +2,7 @@ import { PROJECTILE_HIT_RADIUS } from './constants';
 import type { RuntimeGameState } from './gameTypes';
 import { getPositionOnPath, getPathSegments } from './geometry';
 import { playKillSound } from './audio';
+import { startEnemyDeath } from './enemy';
 
 const pathSegments = getPathSegments();
 
@@ -31,7 +32,7 @@ export function updateProjectiles(state: RuntimeGameState, dt: number): void {
         target.hitFlash = 0.15;
 
         if (target.hp <= 0 && target.alive) {
-          target.alive = false;
+          startEnemyDeath(target);
           state.money += target.reward;
           playKillSound();
           state.floatingTexts.push({
