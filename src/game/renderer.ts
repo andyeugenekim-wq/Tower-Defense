@@ -2,7 +2,6 @@ import {
   CANVAS_HEIGHT,
   CANVAS_WIDTH,
   DEATH_FADE_DURATION,
-  PATH_WAYPOINTS,
   TOWER_ICON_SCALE,
   TOWER_RADIUS,
   TOWER_TYPES,
@@ -18,9 +17,9 @@ export function renderGame(
   drag: DragState | null,
   hoveredEnemyId: number | null,
 ): void {
-  drawBackground(ctx);
-  drawPath(ctx);
-  drawEntranceExit(ctx);
+  drawBackground(ctx, state);
+  drawPath(ctx, state);
+  drawEntranceExit(ctx, state);
   drawTowers(ctx, state);
   drawEnemies(ctx, state, hoveredEnemyId);
   drawProjectiles(ctx, state);
@@ -29,11 +28,12 @@ export function renderGame(
   drawDragPreview(ctx, state, drag);
 }
 
-function drawBackground(ctx: CanvasRenderingContext2D): void {
+function drawBackground(ctx: CanvasRenderingContext2D, state: RuntimeGameState): void {
+  const [top, mid, bottom] = state.mapTheme.background;
   const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-  gradient.addColorStop(0, '#4a9e4f');
-  gradient.addColorStop(0.5, '#3d8b40');
-  gradient.addColorStop(1, '#358038');
+  gradient.addColorStop(0, top);
+  gradient.addColorStop(0.5, mid);
+  gradient.addColorStop(1, bottom);
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
@@ -48,53 +48,58 @@ function drawBackground(ctx: CanvasRenderingContext2D): void {
   }
 }
 
-function drawPath(ctx: CanvasRenderingContext2D): void {
+function drawPath(ctx: CanvasRenderingContext2D, state: RuntimeGameState): void {
+  const { pathWaypoints } = state;
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
   ctx.strokeStyle = 'rgba(0,0,0,0.15)';
   ctx.lineWidth = TRACK_WIDTH + 8;
   ctx.beginPath();
-  ctx.moveTo(PATH_WAYPOINTS[0].x, PATH_WAYPOINTS[0].y);
-  for (let i = 1; i < PATH_WAYPOINTS.length; i += 1) {
-    ctx.lineTo(PATH_WAYPOINTS[i].x, PATH_WAYPOINTS[i].y);
+  ctx.moveTo(pathWaypoints[0].x, pathWaypoints[0].y);
+  for (let i = 1; i < pathWaypoints.length; i += 1) {
+    ctx.lineTo(pathWaypoints[i].x, pathWaypoints[i].y);
   }
   ctx.stroke();
 
+  const [pathStart, pathMid, pathEnd] = state.mapTheme.pathColor;
   const pathGradient = ctx.createLinearGradient(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  pathGradient.addColorStop(0, '#b8b8b8');
-  pathGradient.addColorStop(0.5, '#a8a29e');
-  pathGradient.addColorStop(1, '#9ca3af');
+  pathGradient.addColorStop(0, pathStart);
+  pathGradient.addColorStop(0.5, pathMid);
+  pathGradient.addColorStop(1, pathEnd);
   ctx.strokeStyle = pathGradient;
   ctx.lineWidth = TRACK_WIDTH;
   ctx.beginPath();
-  ctx.moveTo(PATH_WAYPOINTS[0].x, PATH_WAYPOINTS[0].y);
-  for (let i = 1; i < PATH_WAYPOINTS.length; i += 1) {
-    ctx.lineTo(PATH_WAYPOINTS[i].x, PATH_WAYPOINTS[i].y);
+  ctx.moveTo(pathWaypoints[0].x, pathWaypoints[0].y);
+  for (let i = 1; i < pathWaypoints.length; i += 1) {
+    ctx.lineTo(pathWaypoints[i].x, pathWaypoints[i].y);
   }
   ctx.stroke();
 
-  drawCobblestoneOverlay(ctx);
+  drawCobblestoneOverlay(ctx, pathWaypoints);
 
   ctx.strokeStyle = 'rgba(255,255,255,0.12)';
   ctx.lineWidth = 2;
   ctx.setLineDash([8, 12]);
   ctx.beginPath();
-  ctx.moveTo(PATH_WAYPOINTS[0].x, PATH_WAYPOINTS[0].y);
-  for (let i = 1; i < PATH_WAYPOINTS.length; i += 1) {
-    ctx.lineTo(PATH_WAYPOINTS[i].x, PATH_WAYPOINTS[i].y);
+  ctx.moveTo(pathWaypoints[0].x, pathWaypoints[0].y);
+  for (let i = 1; i < pathWaypoints.length; i += 1) {
+    ctx.lineTo(pathWaypoints[i].x, pathWaypoints[i].y);
   }
   ctx.stroke();
   ctx.setLineDash([]);
 }
 
-function drawCobblestoneOverlay(ctx: CanvasRenderingContext2D): void {
+function drawCobblestoneOverlay(
+  ctx: CanvasRenderingContext2D,
+  pathWaypoints: RuntimeGameState['pathWaypoints'],
+): void {
   ctx.save();
   ctx.strokeStyle = 'rgba(60, 60, 60, 0.18)';
   ctx.lineWidth = 1;
-  for (let i = 0; i < PATH_WAYPOINTS.length - 1; i += 1) {
-    const a = PATH_WAYPOINTS[i];
-    const b = PATH_WAYPOINTS[i + 1];
+  for (let i = 0; i < pathWaypoints.length - 1; i += 1) {
+    const a = pathWaypoints[i];
+    const b = pathWaypoints[i + 1];
     const len = Math.hypot(b.x - a.x, b.y - a.y);
     const steps = Math.floor(len / 14);
     for (let s = 0; s <= steps; s += 1) {
@@ -108,9 +113,9 @@ function drawCobblestoneOverlay(ctx: CanvasRenderingContext2D): void {
   ctx.restore();
 }
 
-function drawEntranceExit(ctx: CanvasRenderingContext2D): void {
-  const entrance = PATH_WAYPOINTS[0];
-  const exit = PATH_WAYPOINTS[PATH_WAYPOINTS.length - 1];
+function drawEntranceExit(ctx: CanvasRenderingContext2D, state: RuntimeGameState): void {
+  const entrance = state.pathWaypoints[0];
+  const exit = state.pathWaypoints[state.pathWaypoints.length - 1];
 
   drawMarker(ctx, entrance.x + 24, entrance.y, '#4ade80', 'ENTRANCE', 'above');
   drawMarker(ctx, exit.x, exit.y - 22, '#f87171', 'EXIT', 'above');
@@ -230,7 +235,7 @@ function drawEnemies(
     const isDying = !enemy.alive && enemy.deathFade > 0;
     if (!enemy.alive && !isDying) continue;
 
-    const pos = getEnemyPosition(enemy);
+    const pos = getEnemyPosition(enemy, state);
     const fadeAlpha = isDying ? enemy.deathFade / DEATH_FADE_DURATION : 1;
     const scale = isDying ? 0.6 + fadeAlpha * 0.4 : 1;
 
@@ -381,6 +386,7 @@ function drawDragPreview(
     drag.typeId,
     state.towers,
     state.money,
+    state.pathSegments,
   );
   const valid = check.valid;
 

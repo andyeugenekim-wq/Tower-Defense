@@ -1,10 +1,8 @@
 import { PROJECTILE_HIT_RADIUS } from './constants';
 import type { RuntimeGameState } from './gameTypes';
-import { getPositionOnPath, getPathSegments } from './geometry';
+import { getPositionOnPath } from './geometry';
 import { playKillSound } from './audio';
 import { startEnemyDeath } from './enemy';
-
-const pathSegments = getPathSegments();
 
 export function updateProjectiles(state: RuntimeGameState, dt: number): void {
   const toRemove: number[] = [];
@@ -21,7 +19,11 @@ export function updateProjectiles(state: RuntimeGameState, dt: number): void {
       continue;
     }
 
-    const targetPos = getPositionOnPath(target.distanceTraveled, pathSegments);
+    const targetPos = getPositionOnPath(
+      target.distanceTraveled,
+      state.pathSegments,
+      state.pathWaypoints,
+    );
     const dx = targetPos.x - projectile.x;
     const dy = targetPos.y - projectile.y;
     const dist = Math.hypot(dx, dy);

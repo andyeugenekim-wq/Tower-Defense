@@ -4,6 +4,7 @@ import type { DragState, GameSnapshot } from './gameTypes';
 import { canvasToPoint } from './geometry';
 import { updateGame, getSnapshot } from './gameLoop';
 import { renderGame } from './renderer';
+import { DEFAULT_MAP_ID } from './maps';
 import { createInitialState, resetGameState, startWave } from './waveManager';
 import { getEnemyAtPoint } from './enemy';
 import {
@@ -14,6 +15,7 @@ import {
 } from './tower';
 
 interface GameCanvasProps {
+  mapId: string;
   active: boolean;
   onSnapshot: (snapshot: GameSnapshot) => void;
   onGameOver: (result: 'victory' | 'defeat') => void;
@@ -32,6 +34,7 @@ interface GameCanvasProps {
 }
 
 export function GameCanvas({
+  mapId,
   active,
   onSnapshot,
   onGameOver,
@@ -49,7 +52,7 @@ export function GameCanvas({
   autoStartWaves,
 }: GameCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const stateRef = useRef(createInitialState());
+  const stateRef = useRef(createInitialState(mapId || DEFAULT_MAP_ID));
   const dragRef = useRef<DragState>({ typeId: null, x: 0, y: 0, active: false });
   const hoveredEnemyIdRef = useRef<number | null>(null);
   const lastTimeRef = useRef(0);
@@ -87,12 +90,12 @@ export function GameCanvas({
   useEffect(() => {
     if (resetRequest !== prevResetRef.current) {
       prevResetRef.current = resetRequest;
-      resetGameState(stateRef.current, resetPreserveAutoStart);
+      resetGameState(stateRef.current, mapId, resetPreserveAutoStart);
       dragRef.current = { typeId: null, x: 0, y: 0, active: false };
       hoveredEnemyIdRef.current = null;
       onSelectTower(null);
     }
-  }, [resetRequest, resetPreserveAutoStart, onSelectTower]);
+  }, [resetRequest, resetPreserveAutoStart, mapId, onSelectTower]);
 
   useEffect(() => {
     if (upgradeRequest !== prevUpgradeRef.current && selectedTowerId !== null) {
@@ -245,10 +248,15 @@ export function GameCanvas({
       }
 
       const screen = stateRef.current.screenState;
-      if (screen !== prevScreenRef.current && screen !== 'playing') {
+      if (
+        screen !== prevScreenRef.current &&
+        (screen === 'victory' || screen === 'defeat')
+      ) {
         onGameOver(screen);
+        prevScreenRef.current = screen;
+      } else if (screen === 'playing') {
+        prevScreenRef.current = 'playing';
       }
-      prevScreenRef.current = screen === 'playing' ? 'playing' : screen;
 
       frameRef.current = requestAnimationFrame(loop);
     };

@@ -1,10 +1,6 @@
 import { DEATH_FADE_DURATION, ENEMY_TYPES } from './constants';
 import type { Enemy, Point, RuntimeGameState } from './gameTypes';
-import { distance, getPositionOnPath, getTotalPathLength } from './geometry';
-import { getPathSegments } from './geometry';
-
-const pathSegments = getPathSegments();
-const totalPathLength = getTotalPathLength();
+import { distance, getPositionOnPath } from './geometry';
 
 export function createEnemy(typeId: string, id: number): Enemy {
   const type = ENEMY_TYPES[typeId];
@@ -34,7 +30,7 @@ export function updateEnemies(state: RuntimeGameState, dt: number): void {
       enemy.distanceTraveled += enemy.speed * dt;
       enemy.hitFlash = Math.max(0, enemy.hitFlash - dt * 4);
 
-      if (enemy.distanceTraveled >= totalPathLength) {
+      if (enemy.distanceTraveled >= state.totalPathLength) {
         enemy.alive = false;
         enemy.escaped = true;
         state.health -= enemy.damageToPlayer;
@@ -45,8 +41,12 @@ export function updateEnemies(state: RuntimeGameState, dt: number): void {
   }
 }
 
-export function getEnemyPosition(enemy: Enemy) {
-  return getPositionOnPath(enemy.distanceTraveled, pathSegments);
+export function getEnemyPosition(enemy: Enemy, state: RuntimeGameState) {
+  return getPositionOnPath(
+    enemy.distanceTraveled,
+    state.pathSegments,
+    state.pathWaypoints,
+  );
 }
 
 export function getAliveEnemies(state: RuntimeGameState): Enemy[] {
@@ -61,15 +61,15 @@ export function removeDeadEnemies(state: RuntimeGameState): void {
   );
 }
 
-export function getEnemyProgressValue(enemy: Enemy): number {
-  return enemy.distanceTraveled / totalPathLength;
+export function getEnemyProgressValue(enemy: Enemy, state: RuntimeGameState): number {
+  return enemy.distanceTraveled / state.totalPathLength;
 }
 
 export function getEnemyAtPoint(state: RuntimeGameState, point: Point): Enemy | null {
   const candidates = getAliveEnemies(state);
   for (let i = candidates.length - 1; i >= 0; i -= 1) {
     const enemy = candidates[i];
-    const pos = getEnemyPosition(enemy);
+    const pos = getEnemyPosition(enemy, state);
     if (distance(point, pos) <= enemy.radius + 6) {
       return enemy;
     }
@@ -81,5 +81,3 @@ export function startEnemyDeath(enemy: Enemy): void {
   enemy.alive = false;
   enemy.deathFade = DEATH_FADE_DURATION;
 }
-
-export { totalPathLength, pathSegments };

@@ -1,13 +1,30 @@
-import { SPAWN_INTERVAL, STARTING_HEALTH, STARTING_MONEY, TOTAL_WAVES, WAVES } from './constants';
+import { SPAWN_INTERVAL } from './constants';
 import { createEnemy } from './enemy';
 import type { RuntimeGameState } from './gameTypes';
 import { getAliveEnemies } from './enemy';
 import { playWaveCompleteSound } from './audio';
+import {
+  getMapById,
+  getMapStartingHealth,
+  getMapStartingMoney,
+} from './maps';
+import { getPathSegments, getTotalPathLength } from './geometry';
 
-export function createInitialState(): RuntimeGameState {
+export function createInitialState(mapId: string): RuntimeGameState {
+  const map = getMapById(mapId);
+  const pathSegments = getPathSegments(map.pathWaypoints);
+
   return {
-    money: STARTING_MONEY,
-    health: STARTING_HEALTH,
+    mapId: map.id,
+    mapName: map.name,
+    pathWaypoints: map.pathWaypoints,
+    pathSegments,
+    totalPathLength: getTotalPathLength(pathSegments),
+    waves: map.waves,
+    totalWaves: map.waves.length,
+    mapTheme: map.theme,
+    money: getMapStartingMoney(map),
+    health: getMapStartingHealth(map),
     currentWave: 1,
     waveStatus: 'waiting',
     waveMessage: 'Place towers, then start the wave',
@@ -37,15 +54,19 @@ export function createInitialState(): RuntimeGameState {
   };
 }
 
-export function resetGameState(state: RuntimeGameState, preserveAutoStart = false): void {
+export function resetGameState(
+  state: RuntimeGameState,
+  mapId: string,
+  preserveAutoStart = false,
+): void {
   const autoStartWaves = preserveAutoStart ? state.autoStartWaves : false;
-  const fresh = createInitialState();
+  const fresh = createInitialState(mapId);
   Object.assign(state, fresh);
   state.autoStartWaves = autoStartWaves;
 }
 
-export function buildSpawnQueue(waveNumber: number): string[] {
-  const wave = WAVES[waveNumber - 1];
+export function buildSpawnQueue(state: RuntimeGameState, waveNumber: number): string[] {
+  const wave = state.waves[waveNumber - 1];
   if (!wave) return [];
 
   const queue: string[] = [];
@@ -57,22 +78,22 @@ export function buildSpawnQueue(waveNumber: number): string[] {
   return queue;
 }
 
-export function getWaveTotalCount(waveNumber: number): number {
-  const wave = WAVES[waveNumber - 1];
+export function getWaveTotalCount(state: RuntimeGameState, waveNumber: number): number {
+  const wave = state.waves[waveNumber - 1];
   if (!wave) return 0;
   return wave.spawns.reduce((sum, spawn) => sum + spawn.count, 0);
 }
 
 export function startWave(state: RuntimeGameState): void {
   if (state.waveActive || state.waveStatus === 'spawning') return;
-  if (state.currentWave > TOTAL_WAVES) return;
+  if (state.currentWave > state.totalWaves) return;
 
-  if (state.currentWave === 5 && !state.bossWarningShown) {
+  if (state.currentWave === state.totalWaves && !state.bossWarningShown) {
     state.bossWarningShown = true;
     pushNotification(state, '⚠ Final Boss incoming this wave!', 'warning');
   }
 
-  state.spawnQueue = buildSpawnQueue(state.currentWave);
+  state.spawnQueue = buildSpawnQueue(state, state.currentWave);
   state.waveTotalCount = state.spawnQueue.length;
   state.waveSpawnedCount = 0;
   state.spawnTimer = 0;
@@ -110,10 +131,10 @@ export function updateWaveManager(state: RuntimeGameState, dt: number): void {
 }
 
 function completeWave(state: RuntimeGameState): void {
-  const wave = WAVES[state.currentWave - 1];
+  const wave = state.waves[state.currentWave - 1];
   state.waveActive = false;
 
-  if (state.currentWave >= TOTAL_WAVES) {
+  if (state.currentWave >= state.totalWaves) {
     state.waveStatus = 'complete';
     state.waveMessage = 'Victory!';
     state.screenState = 'victory';

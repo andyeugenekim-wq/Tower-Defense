@@ -41,6 +41,8 @@ export function getSnapshot(
     money: state.money,
     health: state.health,
     currentWave: state.currentWave,
+    totalWaves: state.totalWaves,
+    mapName: state.mapName,
     waveStatus: state.waveStatus,
     waveMessage: state.waveMessage,
     paused: state.paused,

@@ -118,6 +118,8 @@ export interface GameSnapshot {
   money: number;
   health: number;
   currentWave: number;
+  totalWaves: number;
+  mapName: string;
   waveStatus: WaveStatus;
   waveMessage: string;
   paused: boolean;
@@ -145,7 +147,20 @@ export interface UpgradeInfo {
   canUpgrade: boolean;
 }
 
+export interface MapTheme {
+  background: [string, string, string];
+  pathColor: [string, string, string];
+}
+
 export interface RuntimeGameState {
+  mapId: string;
+  mapName: string;
+  pathWaypoints: Point[];
+  pathSegments: PathSegment[];
+  totalPathLength: number;
+  waves: Wave[];
+  totalWaves: number;
+  mapTheme: MapTheme;
   money: number;
   health: number;
   currentWave: number;

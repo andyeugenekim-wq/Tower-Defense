@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { GameCanvas } from './game/GameCanvas';
 import type { GameSnapshot, ScreenState } from './game/gameTypes';
-import { TOWER_SHOP_ORDER, TOWER_TYPES, TOTAL_WAVES } from './game/constants';
+import { TOWER_SHOP_ORDER, TOWER_TYPES } from './game/constants';
+import { DEFAULT_MAP_ID, MAP_LIST } from './game/maps';
 import { resumeAudio } from './game/audio';
 
 export default function App() {
   const [screen, setScreen] = useState<ScreenState>('home');
+  const [selectedMapId, setSelectedMapId] = useState(DEFAULT_MAP_ID);
   const [pauseMenuOpen, setPauseMenuOpen] = useState(false);
   const [autoStartWaves, setAutoStartWaves] = useState(false);
   const [resetPreserveAutoStart, setResetPreserveAutoStart] = useState(false);
@@ -13,6 +15,8 @@ export default function App() {
     money: 500,
     health: 100,
     currentWave: 1,
+    totalWaves: 5,
+    mapName: '',
     waveStatus: 'waiting',
     waveMessage: 'Place towers, then start the wave',
     paused: false,
@@ -47,8 +51,9 @@ export default function App() {
     setResetRequest((r) => r + 1);
   };
 
-  const handleStartGame = () => {
+  const handleStartGame = (mapId: string) => {
     resumeAudio();
+    setSelectedMapId(mapId);
     setAutoStartWaves(false);
     setScreen('playing');
     setPauseMenuOpen(false);
@@ -157,12 +162,25 @@ export default function App() {
           <div className="home-badge">Strategy · Canvas · Waves</div>
           <h1>Tower Defense Simulator</h1>
           <p>
-            Defend the exit from five escalating waves of enemies. Drag towers onto
-            the map, upgrade your defenses, and stop the Final Boss from escaping.
+            Choose a battlefield and defend the exit from five escalating waves.
+            Drag towers onto the map, upgrade your defenses, and stop the Final Boss.
           </p>
-          <button type="button" className="btn btn-primary btn-large" onClick={handleStartGame}>
-            Start Game
-          </button>
+          <div className="map-grid">
+            {MAP_LIST.map((map) => (
+              <button
+                key={map.id}
+                type="button"
+                className="map-card"
+                onClick={() => handleStartGame(map.id)}
+              >
+                <span className={`map-difficulty map-difficulty-${map.difficulty.toLowerCase()}`}>
+                  {map.difficulty}
+                </span>
+                <strong className="map-name">{map.name}</strong>
+                <span className="map-description">{map.description}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -220,9 +238,13 @@ export default function App() {
           <span className="hud-value money">${snapshot.money}</span>
         </div>
         <div className="hud-stat">
+          <span className="hud-label">Map</span>
+          <span className="hud-value">{snapshot.mapName}</span>
+        </div>
+        <div className="hud-stat">
           <span className="hud-label">Wave</span>
           <span className="hud-value">
-            {snapshot.currentWave} / {TOTAL_WAVES}
+            {snapshot.currentWave} / {snapshot.totalWaves}
           </span>
         </div>
         <div className="hud-actions">
@@ -283,6 +305,7 @@ export default function App() {
 
         <div className="canvas-wrap">
           <GameCanvas
+            mapId={selectedMapId}
             active
             onSnapshot={handleSnapshot}
             onGameOver={handleGameOver}

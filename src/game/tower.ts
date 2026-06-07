@@ -12,12 +12,9 @@ import { getAliveEnemies, getEnemyProgressValue } from './enemy';
 import {
   distance,
   getDistanceToPath,
-  getPathSegments,
   getPositionOnPath,
   isInsideCanvas,
 } from './geometry';
-
-const pathSegments = getPathSegments();
 
 export function getTowerTypeStats(typeId: string, level: number) {
   const base = TOWER_TYPES[typeId];
@@ -63,6 +60,7 @@ export function canPlaceTower(
   typeId: string,
   towers: Tower[],
   money: number,
+  pathSegments: RuntimeGameState['pathSegments'],
 ): { valid: boolean; reason?: string } {
   const type = TOWER_TYPES[typeId];
   if (money < type.cost) {
@@ -93,7 +91,13 @@ export function placeTower(
   typeId: string,
   point: Point,
 ): boolean {
-  const check = canPlaceTower(point, typeId, state.towers, state.money);
+  const check = canPlaceTower(
+    point,
+    typeId,
+    state.towers,
+    state.money,
+    state.pathSegments,
+  );
   if (!check.valid) {
     if (check.reason) {
       pushNotification(state, check.reason, 'warning');
@@ -153,11 +157,15 @@ export function findTargetForTower(state: RuntimeGameState, tower: Tower): numbe
   let bestProgress = -1;
 
   for (const enemy of aliveEnemies) {
-    const pos = getPositionOnPath(enemy.distanceTraveled, pathSegments);
+    const pos = getPositionOnPath(
+      enemy.distanceTraveled,
+      state.pathSegments,
+      state.pathWaypoints,
+    );
     const dist = distance({ x: tower.x, y: tower.y }, pos);
     if (dist > stats.range) continue;
 
-    const progress = getEnemyProgressValue(enemy);
+    const progress = getEnemyProgressValue(enemy, state);
     if (progress > bestProgress) {
       bestProgress = progress;
       bestEnemyId = enemy.id;

@@ -1,5 +1,4 @@
 import type { PathSegment, Point } from './gameTypes';
-import { PATH_WAYPOINTS } from './constants';
 
 export function distance(a: Point, b: Point): number {
   const dx = b.x - a.x;
@@ -11,11 +10,11 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
 }
 
-export function getPathSegments(): PathSegment[] {
+export function getPathSegments(waypoints: Point[]): PathSegment[] {
   const segments: PathSegment[] = [];
-  for (let i = 0; i < PATH_WAYPOINTS.length - 1; i += 1) {
-    const start = PATH_WAYPOINTS[i];
-    const end = PATH_WAYPOINTS[i + 1];
+  for (let i = 0; i < waypoints.length - 1; i += 1) {
+    const start = waypoints[i];
+    const end = waypoints[i + 1];
     segments.push({
       start,
       end,
@@ -25,8 +24,8 @@ export function getPathSegments(): PathSegment[] {
   return segments;
 }
 
-export function getTotalPathLength(): number {
-  return getPathSegments().reduce((sum, segment) => sum + segment.length, 0);
+export function getTotalPathLength(segments: PathSegment[]): number {
+  return segments.reduce((sum, segment) => sum + segment.length, 0);
 }
 
 export function getClosestPointOnSegment(
@@ -76,6 +75,7 @@ export function getDistanceToPath(point: Point, segments: PathSegment[]): number
 export function getPositionOnPath(
   distanceTraveled: number,
   segments: PathSegment[],
+  waypoints: Point[],
 ): Point {
   let remaining = distanceTraveled;
 
@@ -90,7 +90,7 @@ export function getPositionOnPath(
     remaining -= segment.length;
   }
 
-  const last = PATH_WAYPOINTS[PATH_WAYPOINTS.length - 1];
+  const last = waypoints[waypoints.length - 1];
   return { ...last };
 }
 
