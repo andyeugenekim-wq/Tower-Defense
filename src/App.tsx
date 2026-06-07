@@ -26,7 +26,9 @@ export default function App() {
   const [startWaveRequest, setStartWaveRequest] = useState(0);
   const [resetRequest, setResetRequest] = useState(0);
   const [upgradeRequest, setUpgradeRequest] = useState(0);
-  const [sellRequest, setSellRequest] = useState(0);
+  const [sellRequest, setSellRequest] = useState<{ towerId: number; nonce: number } | null>(
+    null,
+  );
 
   const handleSnapshot = useCallback((next: GameSnapshot) => {
     setSnapshot(next);
@@ -306,7 +308,8 @@ export default function App() {
             onClose={() => setSelectedTowerId(null)}
             onUpgrade={() => setUpgradeRequest((r) => r + 1)}
             onSell={() => {
-              setSellRequest((r) => r + 1);
+              if (selectedTowerId === null) return;
+              setSellRequest({ towerId: selectedTowerId, nonce: Date.now() });
               setSelectedTowerId(null);
             }}
           />

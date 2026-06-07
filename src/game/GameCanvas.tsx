@@ -25,7 +25,7 @@ interface GameCanvasProps {
   resetRequest: number;
   resetPreserveAutoStart: boolean;
   upgradeRequest: number;
-  sellRequest: number;
+  sellRequest: { towerId: number; nonce: number } | null;
   paused: boolean;
   gameSpeed: number;
   autoStartWaves: boolean;
@@ -59,7 +59,7 @@ export function GameCanvas({
   const prevStartWaveRef = useRef(0);
   const prevResetRef = useRef(0);
   const prevUpgradeRef = useRef(0);
-  const prevSellRef = useRef(0);
+  const prevSellNonceRef = useRef(0);
 
   useEffect(() => {
     stateRef.current.paused = paused;
@@ -102,12 +102,10 @@ export function GameCanvas({
   }, [upgradeRequest, selectedTowerId]);
 
   useEffect(() => {
-    if (sellRequest !== prevSellRef.current && selectedTowerId !== null) {
-      prevSellRef.current = sellRequest;
-      sellTower(stateRef.current, selectedTowerId);
-      onSelectTower(null);
-    }
-  }, [sellRequest, selectedTowerId, onSelectTower]);
+    if (!sellRequest || sellRequest.nonce === prevSellNonceRef.current) return;
+    prevSellNonceRef.current = sellRequest.nonce;
+    sellTower(stateRef.current, sellRequest.towerId);
+  }, [sellRequest]);
 
   useEffect(() => {
     if (dragTypeId) {

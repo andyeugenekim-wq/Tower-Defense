@@ -1,29 +1,55 @@
 import type { EnemyType, Point, TowerType, Wave } from './gameTypes';
 
-export const CANVAS_WIDTH = 900;
-export const CANVAS_HEIGHT = 480;
+export const CANVAS_WIDTH = 1400;
+export const CANVAS_HEIGHT = 788;
 
 export const STARTING_MONEY = 500;
 export const STARTING_HEALTH = 100;
 export const TOTAL_WAVES = 5;
 
-export const TRACK_WIDTH = 70;
-export const TOWER_RADIUS = 24;
-export const TOWER_PADDING = 8;
+/** Visual scale factor relative to the original 900px-wide map */
+export const MAP_SCALE = CANVAS_WIDTH / 900;
+
+export const TRACK_WIDTH = 56;
+export const TOWER_RADIUS = 15;
+export const TOWER_PADDING = 5;
+export const TOWER_ICON_SCALE = TOWER_RADIUS / 24;
 
 export const SPAWN_INTERVAL = 0.8;
-export const PROJECTILE_HIT_RADIUS = 10;
+export const PROJECTILE_HIT_RADIUS = 8;
 export const DEATH_FADE_DURATION = 0.4;
 
+/** Convert reference-map percentage (0–100) to canvas coordinates */
+function mapPoint(xPct: number, yPct: number): { x: number; y: number } {
+  return {
+    x: Math.round((xPct / 100) * CANVAS_WIDTH),
+    y: Math.round((yPct / 100) * CANVAS_HEIGHT),
+  };
+}
+
+/**
+ * "Meadow Crossing" — traced from the reference layout.
+ * Entry left-center, two self-crossing loops on the left, S-bends on the right,
+ * exit bottom-center. Enemies follow the arrow flow (no arrows drawn).
+ */
 export const PATH_WAYPOINTS: Point[] = [
-  { x: 0, y: 300 },
-  { x: 180, y: 300 },
-  { x: 180, y: 120 },
-  { x: 430, y: 120 },
-  { x: 430, y: 420 },
-  { x: 700, y: 420 },
-  { x: 700, y: 220 },
-  { x: 900, y: 220 },
+  mapPoint(0, 45),   // entrance — left edge
+  mapPoint(32, 45),  // intersection 1 (entry horizontal)
+  mapPoint(55, 45),  // upper loop: turn up
+  mapPoint(55, 15),
+  mapPoint(32, 15),
+  mapPoint(32, 45),  // vertical down through intersection 1
+  mapPoint(32, 60),  // intersection 2
+  mapPoint(32, 85),  // lower loop: turn left
+  mapPoint(15, 85),
+  mapPoint(15, 60),
+  mapPoint(32, 60),  // horizontal crossing at intersection 2
+  mapPoint(65, 60),  // right-side bends begin
+  mapPoint(65, 35),
+  mapPoint(80, 35),
+  mapPoint(80, 75),
+  mapPoint(45, 75),
+  mapPoint(45, 100), // exit — bottom center
 ];
 
 export const ENEMY_TYPES: Record<string, EnemyType> = {
@@ -34,7 +60,7 @@ export const ENEMY_TYPES: Record<string, EnemyType> = {
     speed: 90,
     reward: 20,
     damageToPlayer: 5,
-    radius: 12,
+    radius: 9,
     color: '#ff6b6b',
     accentColor: '#ffe066',
   },
@@ -45,7 +71,7 @@ export const ENEMY_TYPES: Record<string, EnemyType> = {
     speed: 55,
     reward: 40,
     damageToPlayer: 10,
-    radius: 16,
+    radius: 12,
     color: '#e67e22',
     accentColor: '#d35400',
   },
@@ -56,7 +82,7 @@ export const ENEMY_TYPES: Record<string, EnemyType> = {
     speed: 35,
     reward: 75,
     damageToPlayer: 20,
-    radius: 20,
+    radius: 16,
     color: '#5d4e6d',
     accentColor: '#95a5a6',
   },
@@ -67,7 +93,7 @@ export const ENEMY_TYPES: Record<string, EnemyType> = {
     speed: 20,
     reward: 300,
     damageToPlayer: 50,
-    radius: 32,
+    radius: 26,
     color: '#8e44ad',
     accentColor: '#e74c3c',
     isBoss: true,
@@ -79,7 +105,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'archer',
     name: 'Archer Tower',
     cost: 100,
-    range: 130,
+    range: 195,
     damage: 20,
     attackSpeed: 1.0,
     projectileSpeed: 350,
@@ -91,7 +117,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'cannon',
     name: 'Cannon Tower',
     cost: 180,
-    range: 110,
+    range: 165,
     damage: 55,
     attackSpeed: 0.55,
     projectileSpeed: 260,
@@ -103,7 +129,7 @@ export const TOWER_TYPES: Record<string, TowerType> = {
     id: 'tesla',
     name: 'Tesla Tower',
     cost: 250,
-    range: 160,
+    range: 245,
     damage: 30,
     attackSpeed: 1.6,
     projectileSpeed: 500,
@@ -118,21 +144,21 @@ export const UPGRADE_CONFIG = [
     level: 1,
     costMultiplier: 0.8,
     damageMultiplier: 1.35,
-    rangeBonus: 15,
+    rangeBonus: 22,
     attackSpeedMultiplier: 1.15,
   },
   {
     level: 2,
     costMultiplier: 1.2,
     damageMultiplier: 1.75,
-    rangeBonus: 30,
+    rangeBonus: 46,
     attackSpeedMultiplier: 1.35,
   },
   {
     level: 3,
     costMultiplier: 1.8,
     damageMultiplier: 2.35,
-    rangeBonus: 50,
+    rangeBonus: 78,
     attackSpeedMultiplier: 1.65,
   },
 ];

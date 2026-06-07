@@ -3,6 +3,7 @@ import {
   CANVAS_WIDTH,
   DEATH_FADE_DURATION,
   PATH_WAYPOINTS,
+  TOWER_ICON_SCALE,
   TOWER_RADIUS,
   TOWER_TYPES,
   TRACK_WIDTH,
@@ -30,16 +31,18 @@ export function renderGame(
 
 function drawBackground(ctx: CanvasRenderingContext2D): void {
   const gradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-  gradient.addColorStop(0, '#3d8b40');
-  gradient.addColorStop(1, '#2d6a30');
+  gradient.addColorStop(0, '#4a9e4f');
+  gradient.addColorStop(0.5, '#3d8b40');
+  gradient.addColorStop(1, '#358038');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-  ctx.fillStyle = 'rgba(255,255,255,0.03)';
-  for (let x = 0; x < CANVAS_WIDTH; x += 40) {
-    for (let y = 0; y < CANVAS_HEIGHT; y += 40) {
-      if ((x / 40 + y / 40) % 2 === 0) {
-        ctx.fillRect(x, y, 40, 40);
+  ctx.fillStyle = 'rgba(255,255,255,0.025)';
+  const tileSize = 50;
+  for (let x = 0; x < CANVAS_WIDTH; x += tileSize) {
+    for (let y = 0; y < CANVAS_HEIGHT; y += tileSize) {
+      if ((x / tileSize + y / tileSize) % 2 === 0) {
+        ctx.fillRect(x, y, tileSize, tileSize);
       }
     }
   }
@@ -59,8 +62,9 @@ function drawPath(ctx: CanvasRenderingContext2D): void {
   ctx.stroke();
 
   const pathGradient = ctx.createLinearGradient(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-  pathGradient.addColorStop(0, '#c4a574');
-  pathGradient.addColorStop(1, '#a08050');
+  pathGradient.addColorStop(0, '#b8b8b8');
+  pathGradient.addColorStop(0.5, '#a8a29e');
+  pathGradient.addColorStop(1, '#9ca3af');
   ctx.strokeStyle = pathGradient;
   ctx.lineWidth = TRACK_WIDTH;
   ctx.beginPath();
@@ -69,6 +73,8 @@ function drawPath(ctx: CanvasRenderingContext2D): void {
     ctx.lineTo(PATH_WAYPOINTS[i].x, PATH_WAYPOINTS[i].y);
   }
   ctx.stroke();
+
+  drawCobblestoneOverlay(ctx);
 
   ctx.strokeStyle = 'rgba(255,255,255,0.12)';
   ctx.lineWidth = 2;
@@ -82,12 +88,32 @@ function drawPath(ctx: CanvasRenderingContext2D): void {
   ctx.setLineDash([]);
 }
 
+function drawCobblestoneOverlay(ctx: CanvasRenderingContext2D): void {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(60, 60, 60, 0.18)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < PATH_WAYPOINTS.length - 1; i += 1) {
+    const a = PATH_WAYPOINTS[i];
+    const b = PATH_WAYPOINTS[i + 1];
+    const len = Math.hypot(b.x - a.x, b.y - a.y);
+    const steps = Math.floor(len / 14);
+    for (let s = 0; s <= steps; s += 1) {
+      const t = steps === 0 ? 0 : s / steps;
+      const x = a.x + (b.x - a.x) * t;
+      const y = a.y + (b.y - a.y) * t;
+      const offset = ((i * 17 + s * 13) % 5) - 2;
+      ctx.strokeRect(x - 4 + offset, y - 3, 8, 6);
+    }
+  }
+  ctx.restore();
+}
+
 function drawEntranceExit(ctx: CanvasRenderingContext2D): void {
   const entrance = PATH_WAYPOINTS[0];
   const exit = PATH_WAYPOINTS[PATH_WAYPOINTS.length - 1];
 
-  drawMarker(ctx, entrance.x + 20, entrance.y, '#4ade80', 'ENTRANCE');
-  drawMarker(ctx, exit.x - 20, exit.y, '#f87171', 'EXIT');
+  drawMarker(ctx, entrance.x + 24, entrance.y, '#4ade80', 'ENTRANCE', 'above');
+  drawMarker(ctx, exit.x, exit.y - 22, '#f87171', 'EXIT', 'above');
 }
 
 function drawMarker(
@@ -96,20 +122,21 @@ function drawMarker(
   y: number,
   color: string,
   label: string,
+  labelPosition: 'above' | 'below' = 'above',
 ): void {
   ctx.save();
   ctx.shadowColor = 'rgba(0,0,0,0.4)';
   ctx.shadowBlur = 8;
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(x, y, 14, 0, Math.PI * 2);
+  ctx.arc(x, y, 11, 0, Math.PI * 2);
   ctx.fill();
   ctx.shadowBlur = 0;
 
   ctx.fillStyle = 'rgba(0,0,0,0.7)';
-  ctx.font = 'bold 10px Inter, sans-serif';
+  ctx.font = 'bold 9px Inter, sans-serif';
   ctx.textAlign = 'center';
-  ctx.fillText(label, x, y - 22);
+  ctx.fillText(label, x, labelPosition === 'above' ? y - 18 : y + 22);
   ctx.restore();
 }
 
@@ -145,15 +172,15 @@ function drawTowers(ctx: CanvasRenderingContext2D, state: RuntimeGameState): voi
 
     if (tower.level > 0) {
       ctx.fillStyle = '#ffd700';
-      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.font = 'bold 8px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(`L${tower.level}`, tower.x, tower.y + TOWER_RADIUS + 12);
+      ctx.fillText(`L${tower.level}`, tower.x, tower.y + TOWER_RADIUS + 10);
     }
 
     if (tower.muzzleFlash > 0) {
       ctx.fillStyle = `rgba(255,255,200,${tower.muzzleFlash * 4})`;
       ctx.beginPath();
-      ctx.arc(tower.x, tower.y, TOWER_RADIUS + 6, 0, Math.PI * 2);
+      ctx.arc(tower.x, tower.y, TOWER_RADIUS + 4, 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -168,27 +195,28 @@ function drawTowerIcon(
   y: number,
   accent: string,
 ): void {
+  const s = TOWER_ICON_SCALE;
   ctx.fillStyle = accent;
   if (typeId === 'archer') {
-    ctx.fillRect(x - 3, y - 14, 6, 18);
+    ctx.fillRect(x - 3 * s, y - 14 * s, 6 * s, 18 * s);
     ctx.beginPath();
-    ctx.moveTo(x, y - 18);
-    ctx.lineTo(x - 6, y - 10);
-    ctx.lineTo(x + 6, y - 10);
+    ctx.moveTo(x, y - 18 * s);
+    ctx.lineTo(x - 6 * s, y - 10 * s);
+    ctx.lineTo(x + 6 * s, y - 10 * s);
     ctx.closePath();
     ctx.fill();
   } else if (typeId === 'cannon') {
-    ctx.fillRect(x - 10, y - 6, 20, 12);
-    ctx.fillRect(x + 4, y - 3, 12, 6);
+    ctx.fillRect(x - 10 * s, y - 6 * s, 20 * s, 12 * s);
+    ctx.fillRect(x + 4 * s, y - 3 * s, 12 * s, 6 * s);
   } else {
     ctx.beginPath();
-    ctx.moveTo(x, y - 14);
-    ctx.lineTo(x + 10, y + 8);
-    ctx.lineTo(x - 10, y + 8);
+    ctx.moveTo(x, y - 14 * s);
+    ctx.lineTo(x + 10 * s, y + 8 * s);
+    ctx.lineTo(x - 10 * s, y + 8 * s);
     ctx.closePath();
     ctx.fill();
     ctx.strokeStyle = '#bee3f8';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = Math.max(1, 2 * s);
     ctx.stroke();
   }
 }
@@ -296,7 +324,7 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: RuntimeGameState)
       ctx.fillStyle = projectile.color;
       ctx.globalAlpha = alpha;
       ctx.beginPath();
-      ctx.arc(point.x, point.y, 3, 0, Math.PI * 2);
+      ctx.arc(point.x, point.y, 2.5, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
@@ -306,7 +334,7 @@ function drawProjectiles(ctx: CanvasRenderingContext2D, state: RuntimeGameState)
     ctx.shadowBlur = 8;
     ctx.fillStyle = projectile.color;
     ctx.beginPath();
-    ctx.arc(projectile.x, projectile.y, 5, 0, Math.PI * 2);
+    ctx.arc(projectile.x, projectile.y, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
@@ -335,7 +363,7 @@ function drawSelectedTower(ctx: CanvasRenderingContext2D, state: RuntimeGameStat
   ctx.lineWidth = 2;
   ctx.setLineDash([4, 4]);
   ctx.beginPath();
-  ctx.arc(tower.x, tower.y, TOWER_RADIUS + 6, 0, Math.PI * 2);
+  ctx.arc(tower.x, tower.y, TOWER_RADIUS + 4, 0, Math.PI * 2);
   ctx.stroke();
   ctx.setLineDash([]);
 }
